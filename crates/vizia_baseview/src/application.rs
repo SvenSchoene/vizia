@@ -462,6 +462,15 @@ impl ApplicationRunner {
             baseview::Event::Window(event) => match event {
                 baseview::WindowEvent::Focused => self.cx.needs_refresh(Entity::root()),
                 baseview::WindowEvent::Resized(window_info) => {
+                    // Skip surface recreation when window is minimized (zero dimensions).
+                    // On Windows, minimizing sends a resize event with (0, 0) dimensions,
+                    // and Skia cannot create surfaces with zero size.
+                    let physical_width = window_info.physical_size().width;
+                    let physical_height = window_info.physical_size().height;
+                    if physical_width == 0 || physical_height == 0 {
+                        return;
+                    }
+
                     let fb_info = {
                         let mut fboid: GLint = 0;
                         unsafe { gl::GetIntegerv(gl::FRAMEBUFFER_BINDING, &mut fboid) };
