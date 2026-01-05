@@ -39,6 +39,9 @@ pub fn hover_system(cx: &mut Context, window_entity: Entity) {
         });
     }
 
+    // Debug: Print on every hover_system call (outside of change block)
+    eprintln!("HOVER_SYSTEM: hovered={:?}, cx.hovered={:?}", hovered, cx.hovered);
+
     // Set hover state for hovered view and ancestors
     let parent_iter = LayoutParentIterator::new(&cx.tree, hovered);
     for ancestor in parent_iter {
@@ -64,7 +67,21 @@ pub fn hover_system(cx: &mut Context, window_entity: Entity) {
             cx.cache.get_height(hovered),
         );
 
+        // Debug: Also print to stderr
+        eprintln!(
+            "HOVER_DEBUG: entity={:?}, view={}, pos=({:.1}, {:.1}), size=({:.1}, {:.1})",
+            hovered,
+            cx.views.get(&hovered).map_or("<None>", |view| view.element().unwrap_or("<Unnamed>")),
+            cx.cache.get_posx(hovered),
+            cx.cache.get_posy(hovered),
+            cx.cache.get_width(hovered),
+            cx.cache.get_height(hovered),
+        );
+
         let cursor = cx.style.cursor.get(hovered).cloned().unwrap_or_default();
+
+        // Debug: Print cursor info
+        eprintln!("HOVER_DEBUG: cursor={:?}, locked={}", cursor, cx.cursor_icon_locked);
 
         if !cx.cursor_icon_locked {
             cx.emit(WindowEvent::SetCursor(cursor));
@@ -154,12 +171,18 @@ fn hover_entity(
     let b = bounds.intersection(&clipping);
     // let b = bounds;
 
+    // Debug: print entity being checked
+    let view_name = cx.views.get(&cx.current).map_or("<None>", |v| v.element().unwrap_or("<Unnamed>"));
+    eprintln!("HOVER_CHECK: entity={:?}, view={}, bounds=({:.1},{:.1},{:.1},{:.1}), cursor=({:.1},{:.1}), pointer_events={}",
+        cx.current, view_name, b.left(), b.top(), b.right(), b.bottom(), tx, ty, pointer_events);
+
     if let Some(pseudo_classes) = cx.style.pseudo_classes.get_mut(cx.current) {
         pseudo_classes.set(PseudoClassFlags::HOVER, false);
     }
 
     if pointer_events {
         if tx >= b.left() && tx < b.right() && ty >= b.top() && ty < b.bottom() {
+            eprintln!("HOVER_HIT: entity={:?}, view={}", cx.current, view_name);
             *hovered = cx.current;
 
             if !cx

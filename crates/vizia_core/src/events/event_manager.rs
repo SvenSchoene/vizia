@@ -210,10 +210,15 @@ fn internal_state_updates(cx: &mut Context, window_event: &WindowEvent, meta: &m
 
         WindowEvent::MouseMove(x, y) => {
             if !x.is_nan() && !y.is_nan() {
-                cx.mouse.previous_cursor_x = cx.mouse.cursor_x;
-                cx.mouse.previous_cursor_y = cx.mouse.cursor_y;
-                cx.mouse.cursor_x = *x;
-                cx.mouse.cursor_y = *y;
+                // Only update mouse coordinates from real (non-synthetic) events.
+                // Synthetic events from the layout system may have stale coordinates
+                // that would overwrite the correct values from real user input.
+                if !meta.synthetic {
+                    cx.mouse.previous_cursor_x = cx.mouse.cursor_x;
+                    cx.mouse.previous_cursor_y = cx.mouse.cursor_y;
+                    cx.mouse.cursor_x = *x;
+                    cx.mouse.cursor_y = *y;
+                }
 
                 hover_system(cx, meta.origin);
 
